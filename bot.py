@@ -1,6 +1,7 @@
 import discord
 import responses
 
+# handles sending any message. called in run bot
 async def send_message(message, user_message, is_private):
     try:
         response = responses.handle_response(user_message)
@@ -9,8 +10,8 @@ async def send_message(message, user_message, is_private):
         print(e)
 
 def run_discord_bot():
-    TOKEN = ''
-    client = discord.Client(intents=discord.Intents.default)
+    TOKEN = '' # remove before commit 
+    client = discord.Client(intents=discord.Intents(messages=True, message_content=True)) # starts discord client for bot
 
     @client.event
     async def on_ready():
@@ -18,17 +19,17 @@ def run_discord_bot():
 
     @client.event
     async def on_message(message):
+        # avoids bot responding to itself
         if message.author == client.user:
             return
         
         username = str(message.author)
         user_message = str(message.content)
-        print(user_message)
         channel = str(message.channel)
 
         print(f"{username} said: '{user_message}' ({channel})")
 
-        if user_message[0] == '?':
+        if len(user_message) > 0 and user_message[0] == '?':
             user_message = user_message[1:]
             await send_message(message, user_message, is_private=True)
         else:
