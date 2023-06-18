@@ -10,7 +10,7 @@ async def send_message(message, user_message, is_private):
         print(e)
 
 def run_discord_bot():
-    TOKEN = '' # remove before commit 
+    TOKEN = 'MTExOTY5MTM5NTk2MDE0ODA1Mg.GPVuNW.PJ9oinFqWrOfW010jA7_qapbuJH1pAXorugaHM' # remove before commit 
     client = discord.Client(intents=discord.Intents(messages=True, message_content=True)) # starts discord client for bot
 
     @client.event
