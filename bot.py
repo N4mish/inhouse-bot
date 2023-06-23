@@ -4,9 +4,9 @@ import responses
 import datetime
 import asyncio
 from inhousemanager import InhouseManager
-import inhouse
-from inhouse import Inhouse
-
+from inhouse import Inhouse, InhouseBotType
+from dateutil import parser
+from dateutil.tz import gettz
 # handles sending any message. called in run bot
 async def send_message(message, user_message, is_private):
     try:
@@ -18,12 +18,16 @@ async def send_message(message, user_message, is_private):
 
 async def schedule_inhouse(client: commands.Bot, inhouse_manager: InhouseManager, time:datetime.datetime):
     now = datetime.datetime.now()
+    now = now.replace(tzinfo=gettz("America/Chicago"))
+    print(f"now: {now} then: {time}")
     wait_time = (time - now).total_seconds()
     await asyncio.sleep(wait_time)
     if time in inhouse_manager.timemap:
-        await client.get_channel(1119693446890922016).send("Inhouse time!") 
+        await client.get_channel(1119693446890922016).send(f"Inhouse time! Inhouse {inhouse_manager.timemap[time].id} is ready!") 
         temp = inhouse_manager.timemap.pop(time)
         inhouse_manager.idmap.pop(temp.id)
+    else:
+        await client.get_channel(1119693446890922016).send("That inhouse was canceled. :(") 
     return
 
 def run_discord_bot():
@@ -61,10 +65,16 @@ def run_discord_bot():
         await interaction.response.send_message(content='Shutting down the bot.')
         await client.close()
 
+    # Please specify date and time in the following format: M/DD/YYYY HH:MM:SS Timezone (in 24h time)
     @client.tree.command(name='schedule', description='Schedules an inhouse message and reminders.')
-    async def schedule(interaction: discord.Interaction):
-        then = datetime.datetime.now().replace(hour=14, minute=51, second=30)
-        await inhouse_manager.schedule(Inhouse("test", inhouse.InhouseBotType.INHOUSE, then))
+    async def schedule(interaction: discord.Interaction, type: InhouseBotType, id: str, time: str):
+        try:
+            print(time)
+            then = parser.parse(time, tzinfos={"CST": gettz("America/Chicago"), "CDT": gettz("America/Chicago")})
+        except:
+            await interaction.response.send_message(content=f"Could not schedule inhouse. Time in invalid format. Please specify date and time in the following format: M/DD/YYYY HH:MM:SS Timezone (in 24h time)")
+            return
+        await inhouse_manager.schedule(Inhouse(id, type, then))
         await interaction.response.send_message(content='Your inhouses have been scheduled!')
         await schedule_inhouse(client, inhouse_manager, then)
 

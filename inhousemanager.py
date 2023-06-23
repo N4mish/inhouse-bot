@@ -46,8 +46,11 @@ class InhouseManager:
                 x.next.prev = None
         else:
             temp = x.prev
-            x.next.prev = x.prev
-            temp.next = x.next
+            if x.next != None:
+                x.next.prev = x.prev
+                temp.next = x.next
+            else:
+                temp.next = None
 
         self.idmap.pop(id)
         print(self.timemap)
