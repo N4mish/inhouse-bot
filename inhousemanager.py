@@ -37,7 +37,7 @@ class InhouseManager:
             x = x.next
         
         if x == None:
-            raise Exception("Got none when traversing")
+            return False
         elif (x.prev == None):
             if (x.next == None):
                 self.timemap.pop(time)
@@ -51,9 +51,7 @@ class InhouseManager:
                 temp.next = x.next
             else:
                 temp.next = None
-
-        self.idmap.pop(id)
-        print(self.timemap)
-        print(self.idmap)
+        
+        return True
         
         

@@ -1,10 +1,10 @@
 import datetime
+import discord
 from enum import Enum
 
 class InhouseBotType(Enum):
     IC = 0
     INHOUSE = 1
-
 
 class Inhouse:
     
@@ -14,5 +14,6 @@ class Inhouse:
         self.time = time
         self.next = None
         self.prev = None
+        self.participants = []
 
     
