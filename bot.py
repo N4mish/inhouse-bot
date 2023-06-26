@@ -58,7 +58,7 @@ async def schedule_inhouse(client: commands.Bot, inhouse_manager: InhouseManager
     return
 
 def run_discord_bot():
-    TOKEN = 'MTExOTY5MTM5NTk2MDE0ODA1Mg.G5VYld.-zbXqtl7obHXTBA37Q-6jnnRb1enLhIMT0ErGo' # remove before commit 
+    TOKEN = '' # remove before commit 
     client = commands.Bot(command_prefix="/", intents=discord.Intents.all())
     inhouse_manager = InhouseManager()
 
