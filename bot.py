@@ -8,7 +8,13 @@ from inhouse import Inhouse, InhouseBotType
 from dateutil import parser
 from dateutil.tz import gettz
 
+
+
 class InterestCheck(discord.ui.View):
+    """
+    The view class for the interest check message. This has buttons and 
+    encompasses all the logic for scheduling, removing and adding people.
+    """
     def __init__(self, inhouse: Inhouse, inhouse_manager: InhouseManager, bot: commands.Bot, channel: int):
         super().__init__()
         self.inhouse = inhouse
@@ -17,27 +23,31 @@ class InterestCheck(discord.ui.View):
         self.channel = channel;
 
     @discord.ui.button(label="Yes!", style=discord.ButtonStyle.primary)
-    async def button_callback(self, interaction, button):
+    async def add_player(self, interaction, button):
+        """
+        Function associated with the yes button to add the player to the inhouse.
+        Checks how many people are in the inhouse before deciding whether to schedule
+        it or not.
         """
         if interaction.user not in self.inhouse.participants:
             await interaction.response.send_message("You've been added to the inhouse list!", ephemeral=True)
             await interaction.user.send("You have been added to the inhouse at a time!")
+
             self.inhouse.participants.append(interaction.user)
+            
             if len(self.inhouse.participants) >= 10:
+                await self.inhouse_manager.cancel("test")
                 await self.inhouse_manager.schedule(Inhouse(self.inhouse.id, InhouseBotType.INHOUSE, self.inhouse.time))
+                await self.bot.get_channel(self.channel).send(f"Inhouses have been scheduled for {self.inhouse.time}!");
         else:
             await interaction.response.send_message("You're already in the inhouse list!", ephemeral=True)
-        """
-        self.inhouse.participants.append(interaction.user)
-        await interaction.response.send_message("You've been added to the list.", ephemeral=True);
-        if len(self.inhouse.participants) >= 10:
-            await self.inhouse_manager.cancel("test")
-            await self.inhouse_manager.schedule(Inhouse(self.inhouse.id, InhouseBotType.INHOUSE, self.inhouse.time))
-            await self.bot.get_channel(self.channel).send(f"Inhouses have been scheduled for {self.inhouse.time}!");
         print(self.inhouse.participants)
     
     @discord.ui.button(label="Remove me", style=discord.ButtonStyle.danger)
-    async def button1_callback(self, interaction, button):
+    async def remove_player(self, interaction, button):
+        """
+        Removes player from inhouse if they're present.
+        """
         if interaction.user in self.inhouse.participants:
             await interaction.response.send_message("You've been removed from the inhouse list!", ephemeral=True)
             await interaction.user.send(f"You've been removed from inhouse {self.inhouse.id} on {self.inhouse.time}.")
@@ -47,18 +57,15 @@ class InterestCheck(discord.ui.View):
         print(self.inhouse.participants)
 
 
-
-async def send_message(message, user_message, is_private):
-    try:
-        response = responses.handle_response(user_message)
-        if response != None:
-            await message.author.send(response) if is_private else await message.channel.send(response)
-    except Exception as e:
-        print(e)
-
 async def schedule_ic_wait(client: commands.Bot, inhouse_manager: InhouseManager, ic_time:datetime.datetime, inhouse_time:datetime.datetime):
+    """
+    Function to schedule interest check and then send message. Each call to this function
+    "schedules" a check, basically waiting until the time of the check. Then at the
+    time of the call, it makes sure the check is still valid (wasn't canceled) and 
+    proceeds with action if it is still valid.
+    """
     now = datetime.datetime.now()
-    now = now.replace(tzinfo=gettz("America/Chicago"))
+    now = now.replace(tzinfo=gettz("America/Chicago")) # assumes your time is CST
     print(f"now: {now} then: {ic_time}")
     wait_time = (ic_time - now).total_seconds()
     await asyncio.sleep(wait_time)
@@ -77,6 +84,12 @@ async def schedule_ic_wait(client: commands.Bot, inhouse_manager: InhouseManager
 
 
 async def schedule_inhouse_wait(client: commands.Bot, inhouse_manager: InhouseManager, time:datetime.datetime):
+    """
+    Function to schedule inhouse and then send message. Each call to this function
+    "schedules" an inhouse, basically waiting until the time of the inhouse. Then at the
+    time of the call, it makes sure the inhouse is still valid (wasn't canceled) and 
+    proceeds with action if it is still valid.
+    """
     now = datetime.datetime.now()
     now = now.replace(tzinfo=gettz("America/Chicago"))
     print(f"now: {now} then: {time}")
@@ -118,18 +131,13 @@ def run_discord_bot():
         channel = str(message.channel)
 
         print(f"{username} said: '{user_message}' ({channel})")
-
-        # if len(user_message) > 0 and user_message[0] == '?':
-        #     user_message = user_message[1:]
-        #     await send_message(message, user_message, is_private=True)
-        # else:
-        #     await send_message(message, user_message, is_private=False)
     
     @client.tree.command(name='shutdown', description='Shuts down the bot.')
     async def shutdown(interaction: discord.Interaction):
         await interaction.response.send_message(content='Shutting down the bot.')
         await client.close()
 
+    """ ADMIN COMMAND """
     # Please specify date and time in the following format: M/DD/YYYY HH:MM:SS Timezone (in 24h time)
     @client.tree.command(name='scheduleic', description='Schedules an inhouse message and reminders.')
     async def scheduleIC(interaction: discord.Interaction, id: str, ic_time: str, inhouse_time: str):
@@ -150,6 +158,7 @@ def run_discord_bot():
         await interaction.response.send_message(content='Your inhouses have been scheduled!')
         await schedule_ic_wait(client, inhouse_manager, then, inhouse_datetime)
         
+    """ ADMIN COMMAND """
     # Please specify date and time in the following format: M/DD/YYYY HH:MM:SS Timezone (in 24h time)
     @client.tree.command(name='scheduleinhouse', description='Schedules an inhouse message and reminders.')
     async def scheduleInhouse(interaction: discord.Interaction, id: str, time: str):
@@ -168,6 +177,7 @@ def run_discord_bot():
         await interaction.response.send_message(content='Your inhouses have been scheduled!')
         await schedule_inhouse_wait(client, inhouse_manager, then)
 
+    """ ADMIN COMMAND """
     @client.tree.command(name='cancel', description='Cancels an inhouse given an id.')
     async def cancel(interaction: discord.Interaction, id: str):
         id = id.strip()
