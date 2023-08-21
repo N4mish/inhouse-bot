@@ -1,15 +1,17 @@
-import discord
-from discord.ext import commands
-import responses
-import datetime
-import asyncio
-from inhousemanager import InhouseManager
-from inhouse import Inhouse, InhouseBotType
-from dateutil import parser
-from dateutil.tz import gettz
+import discord # obvious
+from discord.ext import commands # has bot class + permissions
+import datetime # time for scheduling
+import asyncio # async wait
+from inhousemanager import InhouseManager # see InhouseManager class - encapsulates scheduling
+from inhouse import Inhouse, InhouseBotType, Role # Necessary Enums + Inhouse type
+from dateutil import parser # easy parsing of random format times
+from dateutil.tz import gettz # timezone getting (it's weird)
+import motor
+from motor.motor_tornado import MotorClient
 
 
 
+""" HELPER CLASSES """
 class InterestCheck(discord.ui.View):
     """
     The view class for the interest check message. This has buttons and 
@@ -55,6 +57,13 @@ class InterestCheck(discord.ui.View):
         else:
             await interaction.response.send_message("You were not in the list for this inhouse. No action was taken.", ephemeral=True)
         print(self.inhouse.participants)
+
+
+
+
+""" HELPER ASYNC FUNCTIONS """
+
+
 
 
 async def schedule_ic_wait(client: commands.Bot, inhouse_manager: InhouseManager, ic_time:datetime.datetime, inhouse_time:datetime.datetime):
@@ -108,10 +117,23 @@ async def schedule_inhouse_wait(client: commands.Bot, inhouse_manager: InhouseMa
         await client.get_channel(channel).send("That inhouse was canceled. :(") 
     return
 
+
+
+
+""" MAIN FUNCTION """
+
+
+
+
 def run_discord_bot():
     TOKEN = '' # remove before commit 
     client = commands.Bot(command_prefix="/", intents=discord.Intents.all())
     inhouse_manager = InhouseManager()
+    try:
+        ibdb = MotorClient("mongodb://localhost:27017/")["InhouseBot"]
+    except:
+        print("Couldn't Connect to Mongo")
+
 
     @client.event
     async def on_ready():
@@ -187,7 +209,25 @@ def run_discord_bot():
         else:
             await interaction.response.send_message(content=f"Inhouse with id {id} does not exist or an error occurred.")
     
-    
+    @client.tree.command(name='set_channel', description='Sets the inhouse bot channel to the specified channel.')
+    async def set_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+        await ibdb['ChannelIDs'].update_one({"GuildID":interaction.guild_id}, {"$set": {"channel":channel.id}})
+        await interaction.response.send_message(f"{interaction.guild.name}'s channel has been set to {channel.name}!")
+
+    @client.tree.command(name='set_role_prefs', description='Sets the number role preference to the role you specify.')
+    async def set_role_prefs(interaction: discord.Interaction, pref: int, role: Role):
+        default = {"1":Role.TOP.value, "2":Role.JGL.value, "3":Role.MID.value, "4":Role.ADC.value, "5":Role.SUP.value} # default role prefs
+        ct = await ibdb['RolePrefs'].count_documents({"id":interaction.user.id})
+        if ct > 0:
+            await ibdb['RolePrefs'].update_one({"id": interaction.user.id}, {"$set": {pref:role}})
+        else:
+            default[str(pref)] = role.value
+            default["id"] = interaction.user.id
+            await ibdb['RolePrefs'].insert_one(default)
+        await interaction.response.send_message("Your role preferences have been updated!", ephemeral=True)
+        
+
+
     client.run(TOKEN)
 
     # scheduling. for future use, integrate this with database to find stored times based on server.
