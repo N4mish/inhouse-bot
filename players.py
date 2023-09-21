@@ -3,7 +3,7 @@
 
 
 class Player:
-    role_prefs = {} # Empty list of role prefs, will be populated when player constructed
+    role_prefs = [] # Empty list of role prefs, will be populated when player constructed
 
     # Constructor to create the player
     def __init__(self, ign: str, rank: str, role_prefs: list[str]) -> None:
